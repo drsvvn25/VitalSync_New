@@ -11,6 +11,10 @@ const clinicSchema = new mongoose.Schema({
     district: { type: String, default: null },
     contact: { type: String, default: null },
     type: { type: String, enum: ['hospital', 'clinic', 'pharmacy'], default: 'clinic' },
+    capacity: { type: Number, default: null },
+    operating_hours: { type: String, default: null },
+    emergency_services: { type: Boolean, default: false },
+    specialities: { type: String, default: null },
     created_at: { type: Date, default: Date.now }
 });
 

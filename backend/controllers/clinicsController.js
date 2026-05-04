@@ -10,7 +10,9 @@ const getAllClinics = async (req, res) => {
         const rows = clinics.map(c => ({
             clinic_id: c.clinic_id, name: c.name, address: c.address,
             latitude: c.latitude, longitude: c.longitude, city: c.city,
-            district: c.district, contact: c.contact, type: c.type || 'clinic'
+            district: c.district, contact: c.contact, type: c.type || 'clinic',
+            capacity: c.capacity, operating_hours: c.operating_hours,
+            emergency_services: c.emergency_services, specialities: c.specialities
         }));
         res.json({ success: true, clinics: rows });
     } catch (err) {
@@ -95,7 +97,7 @@ const seedClinics = seedClinicsV2;
 
 const addClinic = async (req, res) => {
     try {
-        const { name, address, latitude, longitude, contact, type } = req.body;
+        const { name, address, latitude, longitude, contact, type, capacity, operating_hours, emergency_services, specialities } = req.body;
         if (!name || !address) {
             return res.status(400).json({ success: false, message: 'Name and address are required' });
         }
@@ -106,7 +108,11 @@ const addClinic = async (req, res) => {
             latitude: latitude || null,
             longitude: longitude || null,
             contact: contact || null,
-            type: type || 'clinic'
+            type: type || 'clinic',
+            capacity: capacity || null,
+            operating_hours: operating_hours || null,
+            emergency_services: emergency_services || false,
+            specialities: specialities || null
         });
         
         res.status(201).json({ success: true, message: 'Clinic added successfully', clinic });
