@@ -93,4 +93,27 @@ const seedClinicsV2 = async (req, res) => {
 
 const seedClinics = seedClinicsV2;
 
-module.exports = { getAllClinics, seedClinics, seedClinicsV2 };
+const addClinic = async (req, res) => {
+    try {
+        const { name, address, latitude, longitude, contact, type } = req.body;
+        if (!name || !address) {
+            return res.status(400).json({ success: false, message: 'Name and address are required' });
+        }
+        
+        const clinic = await Clinic.create({
+            name,
+            address,
+            latitude: latitude || null,
+            longitude: longitude || null,
+            contact: contact || null,
+            type: type || 'clinic'
+        });
+        
+        res.status(201).json({ success: true, message: 'Clinic added successfully', clinic });
+    } catch (err) {
+        console.error('Error adding clinic:', err);
+        res.status(500).json({ success: false, message: 'Server error adding clinic' });
+    }
+};
+
+module.exports = { getAllClinics, seedClinics, seedClinicsV2, addClinic };

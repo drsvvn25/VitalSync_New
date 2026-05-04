@@ -49,7 +49,7 @@ function isLoggedIn() {
 // ── Redirect helpers ──────────────────────────────────────
 function redirectByRole(role) {
     if (role === 'admin') {
-        window.location.href = 'admin-dashboard.html';
+        window.location.href = '/admin/';
     } else if (role === 'doctor') {
         window.location.href = 'doctor-dashboard.html';
     } else {

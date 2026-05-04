@@ -6,7 +6,8 @@
     <title>Admin cPanel – VitalSync</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         :root { --admin-bg: #0f172a; --admin-card: #1e293b; --admin-text: #f8fafc; }
         body.admin-mode { background-color: var(--admin-bg); color: var(--admin-text); font-family: 'Inter', sans-serif; }
@@ -188,6 +189,36 @@
                 </div>
             </div>
         </section>
+
+        <!-- Clinics View -->
+        <section id="clinics-section" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-700">Manage Clinics & Facilities</h2>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addClinicModal"><i class="fas fa-plus me-1"></i> Add Hospital/Clinic</button>
+            </div>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="admin-card">
+                        <div id="clinics-map" style="height: 400px; width: 100%; border-radius: 8px; z-index: 1;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Address</th>
+                                <th>Contact</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clinics-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- Add Doctor Modal -->
@@ -216,6 +247,12 @@
                             <label class="small text-muted">Experience (Years)</label>
                             <input type="number" class="form-control bg-secondary text-white border-0" id="doc-exp">
                         </div>
+                        <div class="mb-3">
+                            <label class="small text-muted">Hospital / Clinic</label>
+                            <select class="form-select bg-secondary text-white border-0" id="doc-clinic">
+                                <option value="">Select Clinic</option>
+                            </select>
+                        </div>
                         <button type="submit" class="btn btn-primary w-100">Create Doctor Account</button>
                     </form>
                 </div>
@@ -223,8 +260,64 @@
         </div>
     </div>
 
+    <!-- Add Clinic Modal -->
+    <div class="modal fade" id="addClinicModal" tabindex="-1">
+        <div class="modal-dialog modal-dark modal-lg">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Register New Hospital/Clinic</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-clinic-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label class="small text-muted">Facility Name</label>
+                                    <input type="text" class="form-control bg-secondary text-white border-0" id="clinic-name" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="small text-muted">Type</label>
+                                    <select class="form-select bg-secondary text-white border-0" id="clinic-type">
+                                        <option value="hospital">Hospital</option>
+                                        <option value="clinic">Clinic</option>
+                                        <option value="pharmacy">Pharmacy</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="small text-muted">Address</label>
+                                    <textarea class="form-control bg-secondary text-white border-0" id="clinic-address" rows="2" required></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="small text-muted">Contact</label>
+                                    <input type="text" class="form-control bg-secondary text-white border-0" id="clinic-contact">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small text-muted">Location Map (Click to set Pin)</label>
+                                <div id="add-clinic-map" style="height: 200px; width: 100%; border-radius: 8px; margin-bottom: 10px; z-index: 1;"></div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <label class="small text-muted">Latitude</label>
+                                        <input type="text" class="form-control bg-secondary text-white border-0" id="clinic-lat" required readonly>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small text-muted">Longitude</label>
+                                        <input type="text" class="form-control bg-secondary text-white border-0" id="clinic-lng" required readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Register Facility</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="../js/auth.js"></script>
     <script>
         // Check if Admin
         const user = getUser();
@@ -351,7 +444,8 @@
                 name: document.getElementById('doc-name').value,
                 email: document.getElementById('doc-email').value,
                 specialization: document.getElementById('doc-spec').value,
-                experience: document.getElementById('doc-exp').value
+                experience: document.getElementById('doc-exp').value,
+                clinic_id: document.getElementById('doc-clinic').value || null
             };
             try {
                 const res = await apiFetch('/admin/doctors/add', { method: 'POST', body: JSON.stringify(body) });
@@ -370,6 +464,7 @@
             document.getElementById('appointments-section').classList.toggle('d-none', name !== 'appointments');
             document.getElementById('transactions-section').classList.toggle('d-none', name !== 'transactions');
             document.getElementById('records-section').classList.toggle('d-none', name !== 'records');
+            document.getElementById('clinics-section').classList.toggle('d-none', name !== 'clinics');
             
             document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
             const target = event ? (event.target.closest('a') || document.querySelector(`[onclick="showSection('${name}')"]`)) : null;
@@ -380,6 +475,92 @@
             if (name === 'appointments') loadAppointments();
             if (name === 'transactions') loadTransactions();
             if (name === 'records') loadMedicalRecords();
+            if (name === 'clinics') loadClinics();
+        }
+
+        let clinicsMap = null;
+        let addClinicMap = null;
+        let addClinicMarker = null;
+
+        async function loadClinics() {
+            try {
+                const res = await apiFetch('/clinics');
+                if (res.ok) {
+                    const list = document.getElementById('clinics-list');
+                    list.innerHTML = res.data.clinics.map(c => `
+                        <tr>
+                            <td class="fw-600">${c.name}</td>
+                            <td><span class="vs-badge bg-${c.type === 'hospital' ? 'primary' : c.type === 'pharmacy' ? 'success' : 'info'}">${c.type}</span></td>
+                            <td class="small">${c.address}</td>
+                            <td>${c.contact || '-'}</td>
+                        </tr>
+                    `).join('');
+
+                    const docClinicSelect = document.getElementById('doc-clinic');
+                    if (docClinicSelect) {
+                        docClinicSelect.innerHTML = '<option value="">Select Clinic</option>' + res.data.clinics.map(c => `<option value="${c.clinic_id}">${c.name}</option>`).join('');
+                    }
+
+                    if (!clinicsMap) {
+                        clinicsMap = L.map('clinics-map').setView([22.5629, 72.9282], 13);
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap' }).addTo(clinicsMap);
+                    }
+                    clinicsMap.eachLayer((layer) => { if (layer instanceof L.Marker) { clinicsMap.removeLayer(layer); } });
+                    
+                    res.data.clinics.forEach(c => {
+                        if (c.latitude && c.longitude) {
+                            L.marker([c.latitude, c.longitude]).addTo(clinicsMap).bindPopup(`<b>${c.name}</b><br>${c.type}`);
+                        }
+                    });
+                    setTimeout(() => clinicsMap.invalidateSize(), 100);
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        const addClinicModalEl = document.getElementById('addClinicModal');
+        if (addClinicModalEl) {
+            addClinicModalEl.addEventListener('shown.bs.modal', () => {
+                if (!addClinicMap) {
+                    addClinicMap = L.map('add-clinic-map').setView([22.5629, 72.9282], 13);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap' }).addTo(addClinicMap);
+                    addClinicMap.on('click', function(e) {
+                        const lat = e.latlng.lat.toFixed(6);
+                        const lng = e.latlng.lng.toFixed(6);
+                        document.getElementById('clinic-lat').value = lat;
+                        document.getElementById('clinic-lng').value = lng;
+                        if (addClinicMarker) {
+                            addClinicMarker.setLatLng(e.latlng);
+                        } else {
+                            addClinicMarker = L.marker(e.latlng).addTo(addClinicMap);
+                        }
+                    });
+                }
+                setTimeout(() => addClinicMap.invalidateSize(), 100);
+            });
+        }
+
+        const addClinicForm = document.getElementById('add-clinic-form');
+        if (addClinicForm) {
+            addClinicForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const body = {
+                    name: document.getElementById('clinic-name').value,
+                    type: document.getElementById('clinic-type').value,
+                    address: document.getElementById('clinic-address').value,
+                    contact: document.getElementById('clinic-contact').value,
+                    latitude: document.getElementById('clinic-lat').value,
+                    longitude: document.getElementById('clinic-lng').value
+                };
+                try {
+                    const res = await apiFetch('/clinics/add', { method: 'POST', body: JSON.stringify(body) });
+                    if (res.ok) {
+                        bootstrap.Modal.getInstance(document.getElementById('addClinicModal')).hide();
+                        loadClinics();
+                        e.target.reset();
+                        if(addClinicMarker) { addClinicMap.removeLayer(addClinicMarker); addClinicMarker = null; }
+                    } else { alert(res.data.message); }
+                } catch (err) { console.error(err); }
+            });
         }
 
         loadStats();
