@@ -10,45 +10,75 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         :root { 
-            --admin-bg: #0f172a; 
-            --admin-card: rgba(30, 41, 59, 0.7); 
+            --admin-bg: #050b14; 
+            --admin-card: rgba(13, 20, 36, 0.65); 
             --admin-text: #f8fafc; 
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --admin-accent: #06b6d4;
+            --admin-accent-glow: rgba(6, 182, 212, 0.4);
+            --admin-secondary: #8b5cf6;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-highlight: rgba(255, 255, 255, 0.15);
         }
         body.admin-mode { 
-            background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+            background: radial-gradient(circle at top left, #1e1b4b 0%, #050b14 50%, #020617 100%);
+            background-attachment: fixed;
             color: var(--admin-text); 
             font-family: 'Inter', sans-serif; 
             min-height: 100vh;
         }
         .sidebar { 
             width: 260px; height: 100vh; position: fixed; 
-            background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(20px);
+            background: rgba(5, 11, 20, 0.85); backdrop-filter: blur(24px);
             border-right: 1px solid var(--glass-border); padding: 2rem 1rem; z-index: 10;
         }
         .main-content { margin-left: 260px; padding: 2rem; }
         .admin-card { 
-            background: var(--admin-card); backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border); border-radius: 16px; 
-            padding: 1.5rem; transition: transform 0.3s, box-shadow 0.3s;
+            background: var(--admin-card); backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); border-radius: 20px; 
+            padding: 1.5rem; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        .admin-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .admin-card:hover { 
+            transform: translateY(-6px); 
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.5), 0 0 15px var(--admin-accent-glow); 
+            border-color: var(--glass-highlight);
+        }
         .sidebar-link { 
-            display: block; padding: 12px 15px; color: #94a3b8; 
-            text-decoration: none; border-radius: 8px; margin-bottom: 5px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 18px; color: #94a3b8; font-weight: 500;
+            text-decoration: none; border-radius: 12px; margin-bottom: 8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
         }
-        .sidebar-link:hover { background: rgba(59, 130, 246, 0.1); color: #fff; transform: translateX(4px); }
-        .sidebar-link.active { background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
-        .stat-card { border-left: 4px solid #3b82f6; }
-        .table { color: #cbd5e1; --bs-table-bg: transparent; --bs-table-color: #cbd5e1; }
-        .table-hover tbody tr:hover { background-color: rgba(255, 255, 255, 0.03); color: #fff; }
-        .table th { border-bottom: 1px solid var(--glass-border); color: #94a3b8; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; background: transparent; }
-        .table td { border-bottom: 1px solid var(--glass-border); vertical-align: middle; }
-        .modal-dark .modal-content { background: rgba(15, 23, 42, 0.95) !important; backdrop-filter: blur(20px); border: 1px solid var(--glass-border) !important; }
-        .form-control.bg-secondary, .form-select.bg-secondary { background: rgba(30, 41, 59, 0.8) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.1) !important; }
-        .form-control.bg-secondary:focus, .form-select.bg-secondary:focus { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); border-color: #3b82f6 !important; }
-        .vs-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
-        .bg-doc { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .sidebar-link i { font-size: 1.1rem; width: 24px; text-align: center; }
+        .sidebar-link:hover { 
+            background: rgba(6, 182, 212, 0.1); color: var(--admin-text); 
+            transform: translateX(6px); 
+        }
+        .sidebar-link.active { 
+            background: linear-gradient(135deg, var(--admin-secondary), var(--admin-accent)); 
+            color: #fff; box-shadow: 0 8px 20px var(--admin-accent-glow); 
+        }
+        .stat-card { border-left: 4px solid var(--admin-accent); }
+        .table { color: #cbd5e1; --bs-table-bg: transparent; --bs-table-color: #cbd5e1; margin-bottom: 0; }
+        .table-hover tbody tr { transition: all 0.2s ease; border-radius: 10px; }
+        .table-hover tbody tr:hover { background-color: rgba(255, 255, 255, 0.04); color: #fff; transform: scale(1.005); }
+        .table th { border-bottom: 1px solid var(--glass-border); color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; background: transparent; padding: 14px; }
+        .table td { border-bottom: 1px solid var(--glass-border); vertical-align: middle; padding: 16px 14px; }
+        .table tbody tr:last-child td { border-bottom: none; }
+        .modal-dark .modal-content { background: rgba(11, 15, 25, 0.95) !important; backdrop-filter: blur(20px); border: 1px solid var(--glass-highlight) !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .modal-header { border-bottom: 1px solid var(--glass-border); }
+        .form-control.bg-secondary, .form-select.bg-secondary { background: rgba(16, 24, 39, 0.8) !important; color: #fff !important; border: 1px solid var(--glass-border) !important; border-radius: 10px; padding: 0.75rem 1rem; }
+        .form-control.bg-secondary:focus, .form-select.bg-secondary:focus { box-shadow: 0 0 0 3px var(--admin-accent-glow); border-color: var(--admin-accent) !important; }
+        .vs-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .bg-doc { background: rgba(6, 182, 212, 0.15); color: var(--admin-accent); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .btn-primary { background: linear-gradient(135deg, var(--admin-secondary), var(--admin-accent)); border: none; font-weight: 600; padding: 10px 20px; border-radius: 10px; transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--admin-accent-glow); opacity: 0.95; color: #fff; }
+        .btn-success { background: linear-gradient(135deg, #059669, #10b981); border: none; font-weight: 600; padding: 10px 20px; border-radius: 10px; transition: all 0.3s ease; color: #fff; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); color: #fff; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--admin-bg); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
 <body class="admin-mode">
