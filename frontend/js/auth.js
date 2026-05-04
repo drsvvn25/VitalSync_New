@@ -17,7 +17,10 @@ window.addEventListener('error', function (e) {
 
 const TOKEN_KEY = 'vs_token';
 const USER_KEY = 'vs_user';
-const API_BASE = 'http://localhost:5000/api';
+let API_BASE = '/api';
+if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' && window.location.port !== '5000') {
+    API_BASE = 'http://localhost:5000/api';
+}
 
 // ── Token helpers ──────────────────────────────────────────
 function saveAuth(token, user) {
