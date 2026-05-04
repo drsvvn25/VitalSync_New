@@ -51,15 +51,15 @@ function redirectByRole(role) {
     if (role === 'admin') {
         window.location.href = '/admin/';
     } else if (role === 'doctor') {
-        window.location.href = 'doctor-dashboard.html';
+        window.location.href = '/doctor-dashboard.html';
     } else {
-        window.location.href = 'patient-dashboard.html';
+        window.location.href = '/patient-dashboard.html';
     }
 }
 
 function requireAuth(allowedRoles = []) {
     if (!isLoggedIn()) {
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
         return false;
     }
     const user = getUser();
@@ -72,7 +72,7 @@ function requireAuth(allowedRoles = []) {
 
 function logout() {
     clearAuth();
-    window.location.href = 'login.html';
+    window.location.href = '/login.html';
 }
 
 // ── Populate sidebar user info ─────────────────────────────
@@ -114,7 +114,7 @@ async function apiFetch(endpoint, options = {}) {
 
     if (res.status === 401 || res.status === 403) {
         clearAuth();
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
         return;
     }
     return { ok: res.ok, status: res.status, data };

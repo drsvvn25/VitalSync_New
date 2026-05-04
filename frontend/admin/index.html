@@ -322,7 +322,7 @@
         // Check if Admin
         const user = getUser();
         if (!user || user.role !== 'admin') {
-            window.location.href = 'login.html';
+            window.location.href = '/login.html';
         }
 
         async function loadStats() {
