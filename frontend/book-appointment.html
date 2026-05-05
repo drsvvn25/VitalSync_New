@@ -401,7 +401,7 @@
                             </div>
 
                             <button type="submit" class="btn btn-vs-primary mt-4 px-4">
-                                <i class="fas fa-calendar-check me-2"></i>Book Appointment + AI Triage
+                                <i class="fas fa-calendar-check me-2"></i>Book Appointment
                                 <span id="btn-spinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
                             </button>
                         </form>
@@ -833,10 +833,9 @@
                 return;
             }
 
-            // Sort: pending → rejected → confirmed → completed
-            const ORDER = { pending: 0, rejected: 1, confirmed: 2, completed: 3 };
+            // Sort: by appointment date descending (newest first)
             const sorted = [...res.data.appointments].sort((a, b) =>
-                (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9)
+                new Date(b.appointment_date) - new Date(a.appointment_date)
             );
 
             const BADGE = {
