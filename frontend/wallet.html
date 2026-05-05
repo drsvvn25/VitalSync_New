@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wallet – VitalSync</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ── Wallet Balance Card ────────────────────── */
+        .wallet-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #2563eb 100%);
+            border-radius: 20px;
+            padding: 36px 40px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 28px;
+        }
+        .wallet-hero::before {
+            content: '';
+            position: absolute;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+            top: -100px; right: -80px;
+            border-radius: 50%;
+        }
+        .wallet-hero::after {
+            content: '';
+            position: absolute;
+            width: 180px; height: 180px;
+            background: radial-gradient(circle, rgba(96,165,250,0.15) 0%, transparent 70%);
+            bottom: -60px; left: 30px;
+            border-radius: 50%;
+        }
+        .wallet-hero .balance-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+        .wallet-hero .balance-amount {
+            font-size: 3.2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .wallet-hero .balance-sub {
+            font-size: 0.82rem;
+            opacity: 0.65;
+        }
+        .wallet-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50px;
+            padding: 5px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            backdrop-filter: blur(6px);
+        }
+
+        /* ── Quick Add Pills ────────────────────────── */
+        .quick-amount-btn {
+            border: 1.5px solid #bfdbfe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-radius: 50px;
+            padding: 6px 18px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-amount-btn:hover, .quick-amount-btn.active {
+            background: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+        }
+
+        /* ── Bill Card ──────────────────────────────── */
+        .bill-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #fff;
+            transition: box-shadow 0.2s;
+        }
+        .bill-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+        .bill-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .bill-icon.unpaid { background: #fef2f2; }
+        .bill-icon.paid   { background: #f0fdf4; }
+        .bill-pay-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: none;
+            color: #fff;
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        .bill-pay-btn:hover { opacity: 0.85; }
+        .bill-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── Transaction Row ────────────────────────── */
+        .txn-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .txn-row:last-child { border-bottom: none; }
+        .txn-icon {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .txn-icon.credit { background: #f0fdf4; color: #16a34a; }
+        .txn-icon.debit  { background: #fef2f2; color: #dc2626; }
+        .txn-amount {
+            font-weight: 700;
+            font-size: 0.95rem;
+            white-space: nowrap;
+        }
+        .txn-amount.credit { color: #16a34a; }
+        .txn-amount.debit  { color: #dc2626; }
+
+        /* ── Stats strip ────────────────────────────── */
+        .wallet-stat {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 18px 20px;
+            text-align: center;
+            transition: box-shadow 0.2s;
+        }
+        .wallet-stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
+        .wallet-stat .ws-val {
+            font-size: 1.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .wallet-stat .ws-lbl {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="patient-dashboard.html" class="sidebar-brand">💙 Vital<span>Sync</span></a>
+        <nav class="mt-2">
+            <a href="patient-dashboard.html" class="nav-link"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="add-health-data.html" class="nav-link"><i class="fas fa-heartbeat"></i> Add Vitals</a>
+            <a href="medical-records.html" class="nav-link"><i class="fas fa-file-medical"></i> Medical Records</a>
+            <a href="book-appointment.html" class="nav-link"><i class="fas fa-calendar-plus"></i> Book Appointment</a>
+            <a href="prescriptions.html" class="nav-link"><i class="fas fa-pills"></i> Prescriptions</a>
+            <a href="wallet.html" class="nav-link active"><i class="fas fa-wallet"></i> My Wallet</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="user-avatar" id="sidebar-avatar">P</div>
+                <div>
+                    <div class="fw-600 text-white small" id="sidebar-user-name">Patient</div>
+                </div>
+            </div>
+            <button class="btn btn-outline-danger btn-sm w-100 mt-1" onclick="logout()">
+                <i class="fas fa-sign-out-alt me-1"></i> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+        <div class="page-header">
+            <h2><i class="fas fa-wallet text-primary me-2"></i>My Wallet</h2>
+            <p>Manage your funds and pay medical bills seamlessly.</p>
+        </div>
+
+        <!-- Balance Hero -->
+        <div class="wallet-hero">
+            <div class="row align-items-center g-3">
+                <div class="col-md-7">
+                    <div class="balance-label">💰 Available Balance</div>
+                    <div class="balance-amount" id="balance-display">₹ —</div>
+                    <div class="balance-sub">VitalSync Health Wallet</div>
+                    <div class="mt-3 d-flex gap-2 flex-wrap">
+                        <div class="wallet-chip"><i class="fas fa-shield-alt me-1"></i>Secure</div>
+                        <div class="wallet-chip"><i class="fas fa-bolt me-1"></i>Instant Pay</div>
+                        <div class="wallet-chip" id="pending-bills-chip" style="display:none !important;background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);">
+                            <i class="fas fa-exclamation-triangle me-1"></i><span id="pending-bills-text">0 Unpaid Bills</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <!-- Add Funds Form -->
+                    <div style="background:rgba(255,255,255,.1);border-radius:16px;padding:20px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15);">
+                        <div style="font-size:0.85rem;font-weight:700;margin-bottom:12px;opacity:0.9;">➕ Add Funds</div>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="quick-amount-btn" onclick="setAmount(100)">₹100</button>
+                            <button class="quick-amount-btn" onclick="setAmount(250)">₹250</button>
+                            <button class="quick-amount-btn" onclick="setAmount(500)">₹500</button>
+                            <button class="quick-amount-btn" onclick="setAmount(1000)">₹1000</button>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <input type="number" id="add-amount" class="vs-form-control" placeholder="Enter amount"
+                                min="1" style="background:rgba(255,255,255,.9);border:none;border-radius:8px;"
+                                oninput="clearQuickActive()">
+                            <button class="btn btn-vs-primary" id="add-btn" onclick="addFunds()" style="white-space:nowrap;min-width:90px;">
+                                <i class="fas fa-plus me-1"></i>Add
+                                <span id="add-spinner" class="spinner-border spinner-border-sm ms-1 d-none"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="row g-3 mb-4" id="wallet-stats">
+            <div class="col-6 col-md-3">
+                <div class="wallet-stat">
+                    <div class="ws-val text-success" id="stat-total-credit">₹0</div>
+                    <div class="ws-lbl">Total Added</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="wallet-stat">
+                    <div class="ws-val text-danger" id="stat-total-spent">₹0</div>
+                    <div class="ws-lbl">Total Spent</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="wallet-stat">
+                    <div class="ws-val text-warning" id="stat-unpaid">0</div>
+                    <div class="ws-lbl">Unpaid Bills</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="wallet-stat">
+                    <div class="ws-val text-primary" id="stat-txn-count">0</div>
+                    <div class="ws-lbl">Transactions</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Medical Bills -->
+            <div class="col-lg-6">
+                <div class="vs-card h-100">
+                    <div class="vs-card-header">
+                        <h5><i class="fas fa-file-invoice-dollar me-2 text-danger"></i>Medical Bills</h5>
+                        <span class="badge bg-danger" id="unpaid-count-badge" style="display:none;">0 Unpaid</span>
+                    </div>
+                    <div id="bills-container">
+                        <div class="spinner-vs">
+                            <div class="spinner-border text-primary spinner-border-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="col-lg-6">
+                <div class="vs-card h-100">
+                    <div class="vs-card-header">
+                        <h5><i class="fas fa-history me-2 text-primary"></i>Transaction History</h5>
+                        <span class="badge bg-secondary" id="txn-count-badge">0</span>
+                    </div>
+                    <div id="transactions-container" style="max-height:480px;overflow-y:auto;">
+                        <div class="spinner-vs">
+                            <div class="spinner-border text-primary spinner-border-sm"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    requireAuth(['patient']);
+    populateSidebarUser();
+
+    let walletData = null;
+
+    // ── Load wallet data ─────────────────────────────────
+    async function loadWallet() {
+        const res = await apiFetch('/wallet/my');
+        if (!res?.ok) {
+            showToast('Failed to load wallet data.', 'error');
+            return;
+        }
+        walletData = res.data;
+        renderBalance(walletData.wallet.balance);
+        renderStats(walletData);
+        renderBills(walletData.bills);
+        renderTransactions(walletData.transactions);
+    }
+
+    function renderBalance(bal) {
+        document.getElementById('balance-display').textContent = `₹ ${Number(bal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function renderStats(data) {
+        const txns = data.transactions || [];
+        const bills = data.bills || [];
+
+        const totalCredit = txns.filter(t => t.transaction_type === 'credit').reduce((s, t) => s + t.amount, 0);
+        const totalDebit  = txns.filter(t => t.transaction_type === 'debit').reduce((s, t) => s + t.amount, 0);
+        const unpaidCount = bills.filter(b => b.status === 'unpaid').length;
+
+        document.getElementById('stat-total-credit').textContent = `₹${totalCredit.toLocaleString('en-IN')}`;
+        document.getElementById('stat-total-spent').textContent  = `₹${totalDebit.toLocaleString('en-IN')}`;
+        document.getElementById('stat-unpaid').textContent       = unpaidCount;
+        document.getElementById('stat-txn-count').textContent    = txns.length;
+        document.getElementById('txn-count-badge').textContent   = txns.length;
+
+        if (unpaidCount > 0) {
+            document.getElementById('unpaid-count-badge').textContent = `${unpaidCount} Unpaid`;
+            document.getElementById('unpaid-count-badge').style.display = '';
+            const chip = document.getElementById('pending-bills-chip');
+            chip.style.cssText = 'display:inline-flex !important;background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);';
+            document.getElementById('pending-bills-text').textContent = `${unpaidCount} Unpaid Bill${unpaidCount > 1 ? 's' : ''}`;
+        }
+    }
+
+    function renderBills(bills) {
+        const el = document.getElementById('bills-container');
+        if (!bills || bills.length === 0) {
+            el.innerHTML = `<div class="empty-state"><i class="fas fa-receipt"></i><p>No bills yet.<br><small>Bills are auto-generated when your doctor adds a medical record.</small></p></div>`;
+            return;
+        }
+
+        // Sort: unpaid first, then by date desc
+        const sorted = [...bills].sort((a, b) => {
+            if (a.status !== b.status) return a.status === 'unpaid' ? -1 : 1;
+            return new Date(b.bill_date) - new Date(a.bill_date);
+        });
+
+        el.innerHTML = sorted.map(b => {
+            const isPaid = b.status === 'paid';
+            const date = new Date(b.bill_date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            return `
+            <div class="bill-card" id="bill-row-${b.bill_id}">
+                <div class="bill-icon ${isPaid ? 'paid' : 'unpaid'}">
+                    ${isPaid ? '✅' : '💸'}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-600 small">Bill #${b.bill_id}</span>
+                        <span class="badge ${isPaid ? 'bg-success' : 'bg-danger'}" style="font-size:0.65rem;">${isPaid ? 'PAID' : 'UNPAID'}</span>
+                    </div>
+                    <div class="text-muted" style="font-size:0.76rem;">
+                        <span><i class="fas fa-stethoscope me-1 text-primary"></i>Consultation: ₹${b.consultation_fee}</span>
+                        <span class="ms-2"><i class="fas fa-pills me-1 text-warning"></i>Medicines: ₹${b.medicines_cost}</span>
+                    </div>
+                    <div class="text-muted" style="font-size:0.72rem;">${date}</div>
+                </div>
+                <div class="text-end flex-shrink-0">
+                    <div class="fw-800" style="font-size:1.05rem;color:${isPaid ? '#16a34a' : '#dc2626'};">₹${b.total_amount}</div>
+                    ${!isPaid ? `<button class="bill-pay-btn mt-1" id="pay-btn-${b.bill_id}" onclick="payBill(${b.bill_id}, ${b.total_amount})">Pay Now</button>` : `<div class="text-muted" style="font-size:0.72rem;">Auto-paid</div>`}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderTransactions(txns) {
+        const el = document.getElementById('transactions-container');
+        if (!txns || txns.length === 0) {
+            el.innerHTML = `<div class="empty-state"><i class="fas fa-exchange-alt"></i><p>No transactions yet.<br><small>Add funds or pay a bill to see history.</small></p></div>`;
+            return;
+        }
+
+        el.innerHTML = txns.map(t => {
+            const isCredit = t.transaction_type === 'credit';
+            const date = new Date(t.transaction_date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return `
+            <div class="txn-row">
+                <div class="txn-icon ${isCredit ? 'credit' : 'debit'}">
+                    <i class="fas ${isCredit ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-500 small">${t.description || (isCredit ? 'Funds Added' : 'Payment')}</div>
+                    <div class="text-muted" style="font-size:0.72rem;">${date}</div>
+                </div>
+                <div class="txn-amount ${isCredit ? 'credit' : 'debit'}">
+                    ${isCredit ? '+' : '-'}₹${t.amount}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Quick amount pills ───────────────────────────────
+    function setAmount(val) {
+        document.getElementById('add-amount').value = val;
+        document.querySelectorAll('.quick-amount-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+    function clearQuickActive() {
+        document.querySelectorAll('.quick-amount-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    // ── Add Funds ────────────────────────────────────────
+    async function addFunds() {
+        const amount = parseFloat(document.getElementById('add-amount').value);
+        if (!amount || amount <= 0) {
+            showToast('Please enter a valid amount.', 'warning');
+            return;
+        }
+        if (amount > 50000) {
+            showToast('Maximum single top-up is ₹50,000.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('add-btn');
+        const spinner = document.getElementById('add-spinner');
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        const res = await apiFetch('/wallet/add', {
+            method: 'POST',
+            body: JSON.stringify({ amount })
+        });
+
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+
+        if (res?.ok) {
+            showToast(res.data.message || `₹${amount} added!`, 'success');
+            document.getElementById('add-amount').value = '';
+            clearQuickActive();
+            loadWallet(); // Refresh
+        } else {
+            showToast(res?.data?.message || 'Failed to add funds.', 'error');
+        }
+    }
+
+    // ── Pay Bill from wallet ─────────────────────────────
+    async function payBill(billId, amount) {
+        const currentBalance = walletData?.wallet?.balance || 0;
+        if (currentBalance < amount) {
+            showToast(`Insufficient balance. You need ₹${amount} but have ₹${currentBalance.toFixed(2)}.`, 'error');
+            return;
+        }
+        if (!confirm(`Pay ₹${amount} for Bill #${billId} from your wallet?`)) return;
+
+        const btn = document.getElementById(`pay-btn-${billId}`);
+        if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
+
+        const res = await apiFetch('/wallet/pay-bill', {
+            method: 'POST',
+            body: JSON.stringify({ bill_id: billId })
+        });
+
+        if (res?.ok) {
+            showToast(`Bill #${billId} paid successfully! ₹${amount} deducted.`, 'success');
+            loadWallet();
+        } else {
+            showToast(res?.data?.message || 'Payment failed.', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Pay Now'; }
+        }
+    }
+
+    // ── Enter key on amount field ────────────────────────
+    document.getElementById('add-amount').addEventListener('keydown', e => {
+        if (e.key === 'Enter') addFunds();
+    });
+
+    loadWallet();
+</script>
+</body>
+</html>
