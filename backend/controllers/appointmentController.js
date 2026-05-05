@@ -189,6 +189,7 @@ const listAppointments = async (req, res) => {
                     queue_position: a.queue_position,
                     triage_result: a.triage_result,
                     patient_name: patUser ? patUser.name : 'Unknown',
+                    patient_phone: patUser ? patUser.phone : null,
                     age: pat ? pat.age : null,
                     gender: pat ? pat.gender : null,
                     blood_group: pat ? pat.blood_group : null,

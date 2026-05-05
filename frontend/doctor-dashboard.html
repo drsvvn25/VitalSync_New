@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -510,6 +510,7 @@
                                 <thead>
                                     <tr>
                                         <th>Patient</th>
+                                        <th>Phone</th>
                                         <th>Token</th>
                                         <th>Date & Time</th>
                                         <th>Status</th>
@@ -518,7 +519,7 @@
                                 </thead>
                                 <tbody id="all-appointments-body">
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted py-3">Loading…</td>
+                                        <td colspan="6" class="text-center text-muted py-3">Loading…</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -927,11 +928,21 @@
             }).join('') || '<p class="text-muted small text-center py-3">No pending confirmations.</p>';
 
 
+
             const tbody = document.getElementById('all-appointments-body');
-            tbody.innerHTML = allAppts.slice(0, 15).map(a => {
+            // Sort: confirmed -> completed -> pending(awaiting) -> rejected
+            const APPT_ORDER = { confirmed: 0, completed: 1, pending: 2, rejected: 3 };
+            const sortedAppts = [...allAppts].sort((a, b) =>
+                (APPT_ORDER[a.status] ?? 9) - (APPT_ORDER[b.status] ?? 9)
+            );
+            tbody.innerHTML = sortedAppts.slice(0, 30).map(a => {
                 const statusMap = { pending: 'badge-pending', confirmed: 'badge-confirmed', rejected: 'badge-rejected', completed: 'badge-completed' };
+                const phoneCell = a.patient_phone
+                    ? `<a href="tel:${a.patient_phone}" class="text-nowrap" style="font-size:0.78rem;color:#0d6efd;"><i class="fas fa-phone me-1" style="font-size:0.7rem;"></i>${a.patient_phone}</a>`
+                    : '<span class="text-muted small">—</span>';
                 return `<tr>
         <td><strong>${a.patient_name}</strong><br><small class="text-muted">${a.gender || ''} ${a.age ? '| ' + a.age + 'yrs' : ''}</small></td>
+        <td>${phoneCell}</td>
         <td>${a.queue_token ? `<span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:4px;font-weight:700;font-family:monospace;">🎫 ${a.queue_token}</span>` : '<span class="text-muted small">—</span>'}</td>
         <td><small>${new Date(a.appointment_date).toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></td>
         <td><span class="badge ${statusMap[a.status]}">${a.status === 'pending' ? 'awaiting' : a.status}</span></td>
@@ -952,7 +963,7 @@
             <button class="btn btn-xs btn-outline-danger ms-2" style="padding:2px 6px;font-size:0.7rem;" onclick="deleteAppt(${a.id})"><i class="fas fa-trash"></i></button>
         `}</td>
       </tr>`;
-            }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">No appointments.</td></tr>';
+            }).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">No appointments.</td></tr>';
         }
 
         async function startTelemedicine(appointmentId) {
