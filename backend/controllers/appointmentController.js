@@ -1,4 +1,8 @@
-const db = require('../config/db');
+const Patient = require('../models/Patient');
+const Doctor = require('../models/Doctor');
+const User = require('../models/User');
+const Appointment = require('../models/Appointment');
+const Notification = require('../models/Notification');
 const { sendAppointmentConfirmation } = require('../services/emailService');
 
 // ── AI Triage Engine ──────────────────────────────────────────────────────────
@@ -39,48 +43,57 @@ const bookAppointment = async (req, res) => {
 
     try {
         // Get patient info
-        const [patientRows] = await db.query(
-            `SELECT p.patient_id, u.name, u.email, u.phone
-             FROM patients p JOIN users u ON p.user_id = u.id
-             WHERE p.user_id = ?`,
-            [req.user.id]
-        );
-        if (patientRows.length === 0)
+        const patient = await Patient.findOne({ user_id: req.user.id });
+        if (!patient)
             return res.status(404).json({ success: false, message: 'Patient record not found.' });
 
-        const { patient_id, name: patientName, email: patientEmail } = patientRows[0];
+        const patientUser = await User.findOne({ id: req.user.id });
+        if (!patientUser)
+            return res.status(404).json({ success: false, message: 'Patient user not found.' });
+
+        const { patient_id } = patient;
+        const patientName = patientUser.name;
+        const patientEmail = patientUser.email;
 
         // Get doctor info
-        const [doctorRows] = await db.query(
-            `SELECT u.name, u.id as user_id, d.specialization
-             FROM doctors d JOIN users u ON d.user_id = u.id
-             WHERE d.doctor_id = ?`,
-            [doctor_id]
-        );
-        if (doctorRows.length === 0)
+        const doctorDoc = parseInt(doctor_id);
+        const doctor = await Doctor.findOne({ doctor_id: doctorDoc });
+        if (!doctor)
             return res.status(404).json({ success: false, message: 'Doctor not found.' });
 
-        const { name: doctorName, user_id: doctorUserId } = doctorRows[0];
+        const doctorUser = await User.findOne({ id: doctor.user_id });
+        if (!doctorUser)
+            return res.status(404).json({ success: false, message: 'Doctor user not found.' });
+
+        const doctorName = doctorUser.name;
+        const doctorUserId = doctor.user_id;
 
         // ── AI Triage ───────────────────────────────────────────────
         const triageInput = [symptoms, notes].filter(Boolean).join(' ');
         const { priority, triageResult, isEmergency } = runAITriage(triageInput);
 
         // ── Queue Position ──────────────────────────────────────────
-        const [countRows] = await db.query(
-            `SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND DATE(appointment_date) = CURDATE()`,
-            [doctor_id]
-        );
-        const queuePosition = (countRows[0].count || 0) + 1;
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+        const count = await Appointment.countDocuments({
+            doctor_id: doctorDoc,
+            appointment_date: { $gte: todayStart, $lte: todayEnd }
+        });
+        const queuePosition = count + 1;
         const queueToken = generateToken(queuePosition);
 
-        // ── Insert appointment ──────────────────────────────────────
-        const [result] = await db.query(
-            `INSERT INTO appointments (patient_id, doctor_id, appointment_date, status, notes, priority, queue_token, queue_position, triage_result)
-             VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
-            [patient_id, doctor_id, appointment_date, notes || symptoms || null,
-                priority, queueToken, queuePosition, triageResult]
-        );
+        // ── Create appointment ──────────────────────────────────────
+        const newAppt = await Appointment.create({
+            patient_id,
+            doctor_id: doctorDoc,
+            appointment_date: new Date(appointment_date),
+            status: 'pending',
+            notes: notes || symptoms || null,
+            priority,
+            queue_token: queueToken,
+            queue_position: queuePosition,
+            triage_result: triageResult,
+        });
 
         // ── Socket alert to doctor if high priority ─────────────────
         if (isEmergency && io) {
@@ -96,67 +109,97 @@ const bookAppointment = async (req, res) => {
             });
 
             // Save notification for doctor
-            await db.query(
-                `INSERT INTO notifications (recipient_id, patient_id, type, vital_type, value, message)
-                 VALUES (?, ?, 'critical', 'Triage', ?, ?)`,
-                [doctorUserId, patient_id, triageResult, alertMsg]
-            );
+            await Notification.create({
+                recipient_id: doctorUserId,
+                patient_id,
+                type: 'critical',
+                vital_type: 'Triage',
+                value: triageResult,
+                message: alertMsg,
+            });
         }
 
         // ── Email notification ──────────────────────────────────────
-        const emailData = sendAppointmentConfirmation({
-            patientName, patientEmail, doctorName, appointmentDate: appointment_date,
+        sendAppointmentConfirmation({
+            patientName, patientEmail, doctorName,
+            appointmentDate: appointment_date,
             queueToken, queuePosition, priority, triageResult,
         });
 
         res.status(201).json({
             success: true,
             message: `Appointment booked! ${isEmergency ? '🚨 HIGH PRIORITY – Doctor alerted.' : 'Awaiting confirmation.'}`,
-            appointment_id: result.insertId,
+            appointment_id: newAppt.id,
             triage: { priority, triageResult, isEmergency },
             queue: { token: queueToken, position: queuePosition },
-            email: emailData, // returned for frontend to show preview
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({ success: false, message: 'Server error.', error: err.message });
     }
 };
 
 // GET /api/appointments/list
 const listAppointments = async (req, res) => {
     try {
-        let query, params;
         if (req.user.role === 'patient') {
-            query = `
-                SELECT a.id, a.appointment_date, a.status, a.notes,
-                       a.priority, a.queue_token, a.queue_position, a.triage_result,
-                       u.name AS doctor_name, d.specialization
-                FROM appointments a
-                JOIN doctors d ON a.doctor_id = d.doctor_id
-                JOIN users u ON d.user_id = u.id
-                JOIN patients p ON a.patient_id = p.patient_id
-                WHERE p.user_id = ?
-                ORDER BY a.priority DESC, a.appointment_date DESC`;
-            params = [req.user.id];
+            const patient = await Patient.findOne({ user_id: req.user.id });
+            if (!patient) return res.json({ success: true, appointments: [] });
+
+            const appts = await Appointment.find({ patient_id: patient.patient_id })
+                .sort({ priority: -1, appointment_date: -1 });
+
+            const results = await Promise.all(appts.map(async (a) => {
+                const doc = await Doctor.findOne({ doctor_id: a.doctor_id });
+                const docUser = doc ? await User.findOne({ id: doc.user_id }) : null;
+                return {
+                    id: a.id,
+                    appointment_date: a.appointment_date,
+                    status: a.status,
+                    notes: a.notes,
+                    priority: a.priority,
+                    queue_token: a.queue_token,
+                    queue_position: a.queue_position,
+                    triage_result: a.triage_result,
+                    doctor_name: docUser ? docUser.name : 'Unknown',
+                    specialization: doc ? doc.specialization : '',
+                };
+            }));
+
+            res.json({ success: true, appointments: results });
         } else {
-            query = `
-                SELECT a.id, a.appointment_date, a.status, a.notes,
-                       a.priority, a.queue_token, a.queue_position, a.triage_result,
-                       u.name AS patient_name, p.age, p.gender, p.blood_group, p.patient_id
-                FROM appointments a
-                JOIN patients p ON a.patient_id = p.patient_id
-                JOIN users u ON p.user_id = u.id
-                JOIN doctors d ON a.doctor_id = d.doctor_id
-                WHERE d.user_id = ?
-                ORDER BY a.priority DESC, a.appointment_date ASC`;
-            params = [req.user.id];
+            // Doctor
+            const doctor = await Doctor.findOne({ user_id: req.user.id });
+            if (!doctor) return res.json({ success: true, appointments: [] });
+
+            const appts = await Appointment.find({ doctor_id: doctor.doctor_id })
+                .sort({ priority: -1, appointment_date: 1 });
+
+            const results = await Promise.all(appts.map(async (a) => {
+                const pat = await Patient.findOne({ patient_id: a.patient_id });
+                const patUser = pat ? await User.findOne({ id: pat.user_id }) : null;
+                return {
+                    id: a.id,
+                    appointment_date: a.appointment_date,
+                    status: a.status,
+                    notes: a.notes,
+                    priority: a.priority,
+                    queue_token: a.queue_token,
+                    queue_position: a.queue_position,
+                    triage_result: a.triage_result,
+                    patient_name: patUser ? patUser.name : 'Unknown',
+                    age: pat ? pat.age : null,
+                    gender: pat ? pat.gender : null,
+                    blood_group: pat ? pat.blood_group : null,
+                    patient_id: a.patient_id,
+                };
+            }));
+
+            res.json({ success: true, appointments: results });
         }
-        const [rows] = await db.query(query, params);
-        res.json({ success: true, appointments: rows });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({ success: false, message: 'Server error.', error: err.message });
     }
 };
 
@@ -168,103 +211,95 @@ const updateAppointment = async (req, res) => {
         return res.status(400).json({ success: false, message: `Status must be one of: ${validStatuses.join(', ')}.` });
 
     try {
-        const [rows] = await db.query(
-            `SELECT a.id, a.queue_token, a.queue_position, a.priority, a.triage_result,
-                    u_p.name as patient_name, u_p.email as patient_email,
-                    u_d.name as doctor_name, a.appointment_date
-             FROM appointments a
-             JOIN doctors d ON a.doctor_id = d.doctor_id
-             JOIN patients p ON a.patient_id = p.patient_id
-             JOIN users u_p ON p.user_id = u_p.id
-             JOIN users u_d ON d.user_id = u_d.id
-             WHERE a.id = ? AND d.user_id = ?`,
-            [req.params.id, req.user.id]
-        );
-        if (rows.length === 0)
+        // Verify the appointment belongs to this doctor
+        const doctor = await Doctor.findOne({ user_id: req.user.id });
+        if (!doctor)
+            return res.status(403).json({ success: false, message: 'Doctor record not found.' });
+
+        const appt = await Appointment.findOne({ id: parseInt(req.params.id), doctor_id: doctor.doctor_id });
+        if (!appt)
             return res.status(403).json({ success: false, message: 'Appointment not found or unauthorized.' });
 
-        await db.query('UPDATE appointments SET status = ? WHERE id = ?', [status, req.params.id]);
+        appt.status = status;
+        await appt.save();
 
         // ── Socket notification to patient ──────────────────────────
         const io = req.app.get('io');
-        if (io && rows[0]) {
-            const appointment = rows[0];
-            // Get patient user_id from patient_id
-            const [pUser] = await db.query('SELECT user_id FROM patients WHERE patient_id = (SELECT patient_id FROM appointments WHERE id = ?)', [req.params.id]);
-            if (pUser.length > 0) {
-                io.to(`user_${pUser[0].user_id}`).emit('appointment_status_update', {
+        if (io) {
+            const pat = await Patient.findOne({ patient_id: appt.patient_id });
+            if (pat) {
+                const doctorUser = await User.findOne({ id: doctor.user_id });
+                io.to(`user_${pat.user_id}`).emit('appointment_status_update', {
                     appointment_id: req.params.id,
-                    status: status,
-                    doctor_name: appointment.doctor_name,
-                    message: `Your appointment with Dr. ${appointment.doctor_name} has been ${status}.`
+                    status,
+                    doctor_name: doctorUser ? doctorUser.name : 'Doctor',
+                    message: `Your appointment with Dr. ${doctorUser ? doctorUser.name : 'Doctor'} has been ${status}.`,
                 });
             }
         }
 
-        // Log email when doctor confirms
+        // Send confirmation email when doctor confirms
         if (status === 'confirmed') {
-            const a = rows[0];
-            const { sendAppointmentConfirmation: sendConf } = require('../services/emailService');
-            sendConf({
-                patientName: a.patient_name, patientEmail: a.patient_email,
-                doctorName: a.doctor_name, appointmentDate: a.appointment_date,
-                queueToken: a.queue_token, queuePosition: a.queue_position,
-                priority: a.priority, triageResult: a.triage_result,
-            });
+            const pat = await Patient.findOne({ patient_id: appt.patient_id });
+            const patUser = pat ? await User.findOne({ id: pat.user_id }) : null;
+            const docUser = await User.findOne({ id: doctor.user_id });
+            if (patUser && docUser) {
+                sendAppointmentConfirmation({
+                    patientName: patUser.name,
+                    patientEmail: patUser.email,
+                    doctorName: docUser.name,
+                    appointmentDate: appt.appointment_date,
+                    queueToken: appt.queue_token,
+                    queuePosition: appt.queue_position,
+                    priority: appt.priority,
+                    triageResult: appt.triage_result,
+                });
+            }
         }
 
         res.json({ success: true, message: `Appointment ${status} successfully.` });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({ success: false, message: 'Server error.', error: err.message });
     }
 };
 
 // GET /api/appointments/stats  (doctor)
 const getAppointmentStats = async (req, res) => {
     try {
-        const [rows] = await db.query(
-            `SELECT status, COUNT(*) as count FROM appointments a
-             JOIN doctors d ON a.doctor_id = d.doctor_id
-             WHERE d.user_id = ? GROUP BY status`,
-            [req.user.id]
-        );
-        const stats = { pending: 0, confirmed: 0, rejected: 0, completed: 0 };
-        rows.forEach(r => { stats[r.status] = r.count; });
+        const doctor = await Doctor.findOne({ user_id: req.user.id });
+        if (!doctor) return res.json({ success: true, stats: { pending: 0, confirmed: 0, rejected: 0, completed: 0, high_priority: 0 } });
 
-        // Also count high-priority pending
-        const [highRows] = await db.query(
-            `SELECT COUNT(*) as count FROM appointments a
-             JOIN doctors d ON a.doctor_id = d.doctor_id
-             WHERE d.user_id = ? AND a.priority = 'high' AND a.status = 'pending'`,
-            [req.user.id]
-        );
-        stats.high_priority = highRows[0].count;
+        const allAppts = await Appointment.find({ doctor_id: doctor.doctor_id });
+        const stats = { pending: 0, confirmed: 0, rejected: 0, completed: 0 };
+        allAppts.forEach(a => {
+            if (stats[a.status] !== undefined) stats[a.status]++;
+        });
+        stats.high_priority = allAppts.filter(a => a.priority === 'high' && a.status === 'pending').length;
 
         res.json({ success: true, stats });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({ success: false, message: 'Server error.', error: err.message });
     }
 };
 
 // DELETE /api/appointments/delete/:id (doctor only)
 const deleteAppointment = async (req, res) => {
     try {
-        const [rows] = await db.query(
-            `SELECT a.id FROM appointments a
-             JOIN doctors d ON a.doctor_id = d.doctor_id
-             WHERE a.id = ? AND d.user_id = ?`,
-            [req.params.id, req.user.id]
-        );
-        if (rows.length === 0)
+        const doctor = await Doctor.findOne({ user_id: req.user.id });
+        if (!doctor)
+            return res.status(403).json({ success: false, message: 'Doctor record not found.' });
+
+        const appt = await Appointment.findOne({ id: parseInt(req.params.id), doctor_id: doctor.doctor_id });
+        if (!appt)
             return res.status(403).json({ success: false, message: 'Appointment not found or unauthorized.' });
 
-        await db.query('DELETE FROM appointments WHERE id = ?', [req.params.id]);
+        await Appointment.deleteOne({ id: parseInt(req.params.id) });
         res.json({ success: true, message: 'Appointment deleted successfully.' });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({ success: false, message: 'Server error.', error: err.message });
     }
 };
 
