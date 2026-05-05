@@ -1,6 +1,7 @@
 const Bed = require('../models/Bed');
 const BedAllocation = require('../models/BedAllocation');
 const Doctor = require('../models/Doctor');
+const Receptionist = require('../models/Receptionist');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 
@@ -31,23 +32,33 @@ const autoReserveBed = async (patient_id, clinic_id) => {
 
 const getClinicBedAllocations = async (req, res) => {
     try {
-        const doc = await Doctor.findOne({ user_id: req.user.id });
-        if (!doc || !doc.clinic_id) return res.status(403).json({ success: false, message: 'Not assigned to a clinic.' });
+        let clinic_id;
+        if (req.user.role === 'receptionist') {
+            const rec = await Receptionist.findOne({ user_id: req.user.id });
+            if (!rec) return res.status(403).json({ success: false, message: 'Not assigned to a clinic.' });
+            clinic_id = rec.clinic_id;
+        } else {
+            const doc = await Doctor.findOne({ user_id: req.user.id });
+            if (!doc || !doc.clinic_id) return res.status(403).json({ success: false, message: 'Not assigned to a clinic.' });
+            clinic_id = doc.clinic_id;
+        }
 
-        const beds = await Bed.find({ clinic_id: doc.clinic_id }).sort({ ward_type: 1, bed_number: 1 });
+        const beds = await Bed.find({ clinic_id }).sort({ ward_type: 1, bed_number: 1 });
         const results = [];
         for (const b of beds) {
             const alloc = await BedAllocation.findOne({ bed_id: b.bed_id, discharge_date: null });
-            let patient_name = null, patient_phone = null;
+            let patient_name = null, patient_phone = null, admission_date = null;
             if (alloc) {
                 const p = await Patient.findOne({ patient_id: alloc.patient_id });
                 if (p) { const u = await User.findOne({ id: p.user_id }); if (u) { patient_name = u.name; patient_phone = u.phone; } }
+                admission_date = alloc.admission_date;
             }
             results.push({
                 allocation_id: alloc ? alloc.allocation_id : null,
-                admission_date: alloc ? alloc.admission_date : null,
+                admission_date,
                 discharge_date: alloc ? alloc.discharge_date : null,
                 bed_number: b.bed_number, ward_type: b.ward_type, status: b.status,
+                bed_id: b.bed_id,
                 patient_name, patient_phone
             });
         }

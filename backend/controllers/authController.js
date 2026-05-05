@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
+const Receptionist = require('../models/Receptionist');
 require('dotenv').config();
 
 // POST /api/auth/register
@@ -40,6 +41,9 @@ const register = async (req, res) => {
                 specialization: specialization || '',
                 experience: experience || 0
             });
+        } else if (role === 'receptionist') {
+            if (!clinic_id) return res.status(400).json({ success: false, message: 'clinic_id is required for receptionist registration.' });
+            await Receptionist.create({ user_id: userId, clinic_id: parseInt(clinic_id) });
         } else {
             await Patient.create({
                 user_id: userId,

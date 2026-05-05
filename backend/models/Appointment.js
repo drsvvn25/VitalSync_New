@@ -11,7 +11,8 @@ const appointmentSchema = new mongoose.Schema({
     priority: { type: String, enum: ['normal', 'high'], default: 'normal' },
     queue_token: { type: String, default: null },
     queue_position: { type: Number, default: 0 },
-    triage_result: { type: String, default: 'Routine' }
+    triage_result: { type: String, default: 'Routine' },
+    checkin_time: { type: Date, default: null }
 });
 
 appointmentSchema.pre('save', async function (next) {

@@ -52,6 +52,8 @@ function redirectByRole(role) {
         window.location.href = '/admin/';
     } else if (role === 'doctor') {
         window.location.href = '/doctor-dashboard.html';
+    } else if (role === 'receptionist') {
+        window.location.href = '/reception-dashboard.html';
     } else {
         window.location.href = '/patient-dashboard.html';
     }

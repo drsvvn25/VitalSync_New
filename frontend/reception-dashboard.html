@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reception Dashboard – VitalSync</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .bed-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        .bed-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+        .bed-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        .bed-card.available {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+        .bed-card.occupied {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .bed-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+        .bed-card.available .bed-icon { color: #22c55e; }
+        .bed-card.occupied .bed-icon { color: #ef4444; }
+        .bed-number {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .bed-patient {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .kpi-row .kpi-card {
+            padding: 1.2rem;
+        }
+
+        .bill-pay-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            color: #fff;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .bill-pay-btn:hover { opacity: 0.9; }
+
+        .checkin-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            color: #fff;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .checkin-btn:hover { opacity: 0.9; }
+        
+        .nav-tabs .nav-link {
+            color: var(--text-secondary);
+            font-weight: 600;
+            border: none;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="reception-dashboard.html" class="sidebar-brand">💙 Vital<span>Sync</span></a>
+        <nav class="mt-2">
+            <a href="reception-dashboard.html" class="nav-link active"><i class="fas fa-desktop"></i> Front Desk</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="user-avatar" id="sidebar-avatar">R</div>
+                <div>
+                    <div class="fw-600 text-white small" id="sidebar-user-name">Receptionist</div>
+                    <div class="text-muted" style="font-size:0.75rem;" id="sidebar-clinic">Clinic Name</div>
+                </div>
+            </div>
+            <button class="btn btn-outline-danger btn-sm w-100 mt-1" onclick="logout()">
+                <i class="fas fa-sign-out-alt me-1"></i> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="topbar">
+            <div>
+                <h2 id="welcome-msg">Front Desk Overview</h2>
+                <p class="text-muted small" id="date-display"></p>
+            </div>
+            <button class="btn btn-vs-outline btn-sm" onclick="loadAllData()"><i class="fas fa-sync-alt me-1"></i>Refresh</button>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="row g-3 mb-4 kpi-row">
+            <div class="col-6 col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-bp"><i class="fas fa-calendar-check"></i></div>
+                    <div>
+                        <div class="kpi-val" id="kpi-confirmed">0</div>
+                        <div class="kpi-label">Appointments Today</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-oxy"><i class="fas fa-user-check"></i></div>
+                    <div>
+                        <div class="kpi-val" id="kpi-checkedin">0</div>
+                        <div class="kpi-label">Checked In</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-heart"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div>
+                        <div class="kpi-val" id="kpi-unpaid">0</div>
+                        <div class="kpi-label">Unpaid Bills</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon bg-temp"><i class="fas fa-bed"></i></div>
+                    <div>
+                        <div class="kpi-val" id="kpi-beds">0/0</div>
+                        <div class="kpi-label">Available Beds</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <ul class="nav nav-tabs mb-4" id="receptionTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="queue-tab" data-bs-toggle="tab" data-bs-target="#queue" type="button" role="tab">Patient Queue</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="beds-tab" data-bs-toggle="tab" data-bs-target="#beds" type="button" role="tab">Bed Management</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="billing-tab" data-bs-toggle="tab" data-bs-target="#billing" type="button" role="tab">Billing (Pay at Desk)</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="receptionTabsContent">
+            <!-- Queue Tab -->
+            <div class="tab-pane fade show active" id="queue" role="tabpanel">
+                <div class="vs-card">
+                    <div class="vs-card-header">
+                        <h5><i class="fas fa-users me-2 text-primary"></i>Today's Patient Queue</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="vs-table">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queue-body">
+                                <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Beds Tab -->
+            <div class="tab-pane fade" id="beds" role="tabpanel">
+                <div class="vs-card">
+                    <div class="vs-card-header">
+                        <h5><i class="fas fa-procedures me-2 text-primary"></i>Clinic Bed Layout</h5>
+                    </div>
+                    <div class="bed-grid" id="bed-grid-container">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing Tab -->
+            <div class="tab-pane fade" id="billing" role="tabpanel">
+                <div class="vs-card">
+                    <div class="vs-card-header">
+                        <h5><i class="fas fa-cash-register me-2 text-primary"></i>Unpaid Patient Bills</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="vs-table">
+                            <thead>
+                                <tr>
+                                    <th>Bill #</th>
+                                    <th>Date</th>
+                                    <th>Patient</th>
+                                    <th>Amount</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bills-body">
+                                <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- Assign Bed Modal -->
+<div class="modal fade" id="assignBedModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Bed <span id="assign-bed-num" class="text-primary"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assign-bed-id">
+                <div class="mb-3">
+                    <label class="form-label">Select Patient</label>
+                    <select class="vs-form-control" id="assign-patient-id">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-vs-primary" onclick="submitBedAssign()">Assign Bed</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    requireAuth(['receptionist']);
+    document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    let clinicId = null;
+    let patientsList = [];
+    let unassignedPatients = [];
+
+    async function init() {
+        const res = await apiFetch('/reception/profile');
+        if (res?.ok) {
+            const data = res.data.receptionist;
+            document.getElementById('sidebar-user-name').textContent = data.user.name;
+            document.getElementById('sidebar-clinic').textContent = data.clinic?.name || '';
+            clinicId = data.clinic_id;
+            
+            // Connect socket
+            const socketUrl = (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port !== '5000')) ? 'http://localhost:5000' : '';
+            const socket = io(socketUrl);
+            socket.on('connect', () => {
+                socket.emit('join_room', { userId: data.user.id, role: 'receptionist', clinicId: clinicId });
+            });
+            
+            // Listen for events
+            socket.on('patient_arrived', (data) => {
+                showToast(`Check-in: ${data.patient_name}`, 'info');
+                loadAllData();
+            });
+            socket.on('record_added', () => loadAllData()); // Trigger bill generation update
+        }
+        
+        loadAllData();
+    }
+
+    async function loadAllData() {
+        loadDashboard();
+        loadPatients();
+        loadBeds();
+        loadBills();
+    }
+
+    async function loadDashboard() {
+        const res = await apiFetch('/reception/dashboard');
+        if (res?.ok) {
+            const s = res.data.stats;
+            document.getElementById('kpi-confirmed').textContent = s.confirmed_today;
+            document.getElementById('kpi-checkedin').textContent = s.checked_in_today;
+            document.getElementById('kpi-unpaid').textContent = s.unpaid_bills;
+            document.getElementById('kpi-beds').textContent = `${s.available_beds}/${s.total_beds}`;
+        }
+    }
+
+    async function loadPatients() {
+        const res = await apiFetch('/reception/patients');
+        if (res?.ok) {
+            patientsList = res.data.appointments;
+            const todayStr = new Date().toDateString();
+            
+            // Filter to today's appointments
+            const todayAppts = patientsList.filter(a => new Date(a.appointment_date).toDateString() === todayStr);
+            
+            // Populate unassigned list for bed allocation
+            unassignedPatients = patientsList.filter(a => a.status !== 'completed' && !a.bed_number);
+
+            const tbody = document.getElementById('queue-body');
+            tbody.innerHTML = todayAppts.length === 0 ? '<tr><td colspan="6" class="text-center text-muted">No appointments today.</td></tr>' : 
+                todayAppts.map(a => {
+                    let statusBadge, actionBtn = '';
+                    if (a.status === 'completed') {
+                        statusBadge = '<span class="badge bg-secondary">Completed</span>';
+                    } else if (a.checkin_time) {
+                        statusBadge = '<span class="badge bg-success">Checked In</span>';
+                        if (a.has_unpaid_bill) actionBtn = '<span class="text-danger small fw-bold">Bill Pending</span>';
+                        else if (a.bed_number) actionBtn = `<span class="badge bg-info">Bed ${a.bed_number}</span>`;
+                    } else if (a.status === 'confirmed') {
+                        statusBadge = '<span class="badge bg-primary">Confirmed</span>';
+                        actionBtn = `<button class="checkin-btn" onclick="checkIn(${a.id})">Check In</button>`;
+                    } else {
+                        statusBadge = `<span class="badge bg-warning text-dark">${a.status}</span>`;
+                    }
+
+                    const time = new Date(a.appointment_date).toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'});
+                    
+                    return `
+                    <tr>
+                        <td><span style="font-family:monospace;font-weight:700;color:#2563eb;">${a.queue_token || '—'}</span></td>
+                        <td>
+                            <strong>${a.patient_name}</strong>
+                            <div class="text-muted" style="font-size:0.75rem;">${a.patient_phone || ''}</div>
+                        </td>
+                        <td>${a.doctor_name}</td>
+                        <td>${time}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actionBtn}</td>
+                    </tr>`;
+                }).join('');
+        }
+    }
+
+    async function checkIn(apptId) {
+        const res = await apiFetch(`/reception/checkin/${apptId}`, { method: 'POST' });
+        if (res?.ok) {
+            showToast('Patient checked in successfully!');
+            loadAllData();
+        } else {
+            showToast(res?.data?.message || 'Check-in failed.', 'error');
+        }
+    }
+
+    async function loadBeds() {
+        const res = await apiFetch('/reception/beds');
+        if (res?.ok) {
+            const container = document.getElementById('bed-grid-container');
+            container.innerHTML = res.data.beds.map(b => {
+                const isOccupied = b.status === 'occupied';
+                if (isOccupied) {
+                    return `
+                    <div class="bed-card occupied" onclick="dischargeBed(${b.allocation_id}, '${b.bed_number}')">
+                        <div class="bed-icon"><i class="fas fa-procedures"></i></div>
+                        <div class="bed-number">${b.ward_type}-${b.bed_number}</div>
+                        <div class="bed-patient">${b.patient_name}</div>
+                        <div class="text-danger mt-1" style="font-size:0.7rem;font-weight:700;">Click to Discharge</div>
+                    </div>`;
+                } else {
+                    return `
+                    <div class="bed-card available" onclick="openAssignModal(${b.bed_id}, '${b.ward_type}-${b.bed_number}')">
+                        <div class="bed-icon"><i class="fas fa-bed"></i></div>
+                        <div class="bed-number">${b.ward_type}-${b.bed_number}</div>
+                        <div class="bed-patient text-success mt-1">Available</div>
+                    </div>`;
+                }
+            }).join('');
+        }
+    }
+
+    function openAssignModal(bedId, bedLabel) {
+        document.getElementById('assign-bed-id').value = bedId;
+        document.getElementById('assign-bed-num').textContent = bedLabel;
+        
+        const select = document.getElementById('assign-patient-id');
+        select.innerHTML = '<option value="">-- Select Patient --</option>' + 
+            unassignedPatients.map(p => `<option value="${p.patient_id}">${p.patient_name} (${p.patient_phone || 'No phone'})</option>`).join('');
+            
+        new bootstrap.Modal(document.getElementById('assignBedModal')).show();
+    }
+
+    async function submitBedAssign() {
+        const bedId = document.getElementById('assign-bed-id').value;
+        const patientId = document.getElementById('assign-patient-id').value;
+        if (!patientId) {
+            showToast('Select a patient first', 'warning');
+            return;
+        }
+
+        const res = await apiFetch('/reception/beds/assign', {
+            method: 'POST',
+            body: JSON.stringify({ bed_id: bedId, patient_id: patientId })
+        });
+
+        if (res?.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('assignBedModal')).hide();
+            showToast(res.data.message);
+            loadAllData();
+        } else {
+            showToast(res?.data?.message || 'Assignment failed.', 'error');
+        }
+    }
+
+    async function dischargeBed(allocId, bedNum) {
+        if (!confirm(`Discharge patient and free Bed ${bedNum}?`)) return;
+        const res = await apiFetch(`/reception/beds/discharge/${allocId}`, { method: 'POST' });
+        if (res?.ok) {
+            showToast('Bed freed successfully.');
+            loadAllData();
+        } else {
+            showToast(res?.data?.message || 'Discharge failed.', 'error');
+        }
+    }
+
+    async function loadBills() {
+        const res = await apiFetch('/reception/bills');
+        if (res?.ok) {
+            const unpaid = res.data.bills.filter(b => b.status === 'unpaid');
+            const tbody = document.getElementById('bills-body');
+            tbody.innerHTML = unpaid.length === 0 ? '<tr><td colspan="5" class="text-center text-muted">No unpaid bills.</td></tr>' : 
+                unpaid.map(b => `
+                <tr>
+                    <td><strong>#${b.bill_id}</strong></td>
+                    <td><small>${new Date(b.bill_date).toLocaleDateString('en-IN')}</small></td>
+                    <td>
+                        <div>${b.patient_name}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">${b.patient_phone || ''}</div>
+                    </td>
+                    <td class="text-danger fw-bold">₹${b.total_amount}</td>
+                    <td><button class="bill-pay-btn" onclick="payBill(${b.bill_id})">Mark Paid</button></td>
+                </tr>`).join('');
+        }
+    }
+
+    async function payBill(billId) {
+        if (!confirm(`Collect cash/card for Bill #${billId} and mark as paid?`)) return;
+        const res = await apiFetch(`/reception/bills/pay/${billId}`, {
+            method: 'POST',
+            body: JSON.stringify({ payment_method: 'desk' })
+        });
+        if (res?.ok) {
+            showToast(`Bill #${billId} marked as paid.`);
+            loadAllData();
+        } else {
+            showToast(res?.data?.message || 'Payment failed.', 'error');
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>

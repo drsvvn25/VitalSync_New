@@ -88,6 +88,7 @@
         <nav>
             <a href="#" class="sidebar-link active" onclick="showSection('dashboard')"><i class="fas fa-chart-line me-2"></i> Dashboard</a>
             <a href="#" class="sidebar-link" onclick="showSection('doctors')"><i class="fas fa-user-md me-2"></i> Manage Doctors</a>
+            <a href="#" class="sidebar-link" onclick="showSection('receptionists')"><i class="fas fa-desktop me-2"></i> Manage Receptionists</a>
             <a href="#" class="sidebar-link" onclick="showSection('patients')"><i class="fas fa-users me-2"></i> Manage Patients</a>
             <a href="#" class="sidebar-link" onclick="showSection('appointments')"><i class="fas fa-calendar-check me-2"></i> Appointments</a>
             <a href="#" class="sidebar-link" onclick="showSection('records')"><i class="fas fa-file-medical me-2"></i> Medical Records</a>
@@ -160,6 +161,30 @@
                             </tr>
                         </thead>
                         <tbody id="doctors-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Receptionists Management -->
+        <section id="receptionists-section" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-700">Manage Receptionists</h2>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addReceptionistModal"><i class="fas fa-plus me-1"></i> Add Receptionist</button>
+            </div>
+
+            <div class="admin-card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Clinic</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receptionists-list"></tbody>
                     </table>
                 </div>
             </div>
@@ -313,6 +338,41 @@
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Create Doctor Account</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Receptionist Modal -->
+    <div class="modal fade" id="addReceptionistModal" tabindex="-1">
+        <div class="modal-dialog modal-dark">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Register New Receptionist</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-receptionist-form">
+                        <div class="mb-2">
+                            <label class="small text-muted">Full Name</label>
+                            <input type="text" class="form-control bg-secondary text-white border-0" id="rec-name" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="small text-muted">Email</label>
+                            <input type="email" class="form-control bg-secondary text-white border-0" id="rec-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="small text-muted">Temporary Password</label>
+                            <input type="password" class="form-control bg-secondary text-white border-0" id="rec-password" required minlength="6">
+                        </div>
+                        <div class="mb-3">
+                            <label class="small text-muted">Hospital / Clinic</label>
+                            <select class="form-select bg-secondary text-white border-0" id="rec-clinic" required>
+                                <option value="">Select Clinic</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Create Receptionist Account</button>
                     </form>
                 </div>
             </div>
@@ -540,9 +600,30 @@
             } catch (err) { console.error(err); }
         });
 
+        document.getElementById('add-receptionist-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = {
+                name: document.getElementById('rec-name').value,
+                email: document.getElementById('rec-email').value,
+                password: document.getElementById('rec-password').value,
+                role: 'receptionist',
+                clinic_id: document.getElementById('rec-clinic').value
+            };
+            try {
+                // Admin uses auth/register internally
+                const res = await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(body) });
+                if (res.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('addReceptionistModal')).hide();
+                    e.target.reset();
+                    alert('Receptionist created successfully!');
+                } else { alert(res.data.message || 'Error creating receptionist'); }
+            } catch (err) { console.error(err); }
+        });
+
         function showSection(name) {
             document.getElementById('dashboard-section').classList.toggle('d-none', name !== 'dashboard');
             document.getElementById('doctors-section').classList.toggle('d-none', name !== 'doctors');
+            document.getElementById('receptionists-section').classList.toggle('d-none', name !== 'receptionists');
             document.getElementById('patients-section').classList.toggle('d-none', name !== 'patients');
             document.getElementById('appointments-section').classList.toggle('d-none', name !== 'appointments');
             document.getElementById('transactions-section').classList.toggle('d-none', name !== 'transactions');
@@ -600,6 +681,10 @@
                     const docClinicSelect = document.getElementById('doc-clinic');
                     if (docClinicSelect) {
                         docClinicSelect.innerHTML = '<option value="">Select Clinic</option>' + res.data.clinics.map(c => `<option value="${c.clinic_id}">${c.name}</option>`).join('');
+                    }
+                    const recClinicSelect = document.getElementById('rec-clinic');
+                    if (recClinicSelect) {
+                        recClinicSelect.innerHTML = '<option value="">Select Clinic</option>' + res.data.clinics.map(c => `<option value="${c.clinic_id}">${c.name}</option>`).join('');
                     }
 
                     if (!clinicsMap) {

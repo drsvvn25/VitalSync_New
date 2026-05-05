@@ -22,18 +22,24 @@ io.on('connection', (socket) => {
     console.log(`🔌 Socket connected: ${socket.id}`);
 
     socket.on('join_room', (data) => {
-        // Accept both plain userId (legacy) and { userId, role } object
         const userId = typeof data === 'object' ? data.userId : data;
-        const role = typeof data === 'object' ? data.role : null;
+        const role   = typeof data === 'object' ? data.role : null;
+        const clinicId = typeof data === 'object' ? data.clinicId : null;
 
         // Always join personal room
         socket.join(`user_${userId}`);
         console.log(`👤 User ${userId} joined room user_${userId}`);
 
-        // Doctors also join the shared 'doctors' broadcast room
+        // Doctors join the shared 'doctors' broadcast room
         if (role === 'doctor') {
             socket.join('doctors');
             console.log(`👨‍⚕️ Doctor ${userId} joined broadcast room 'doctors'`);
+        }
+
+        // Receptionists join clinic-specific room
+        if (role === 'receptionist' && clinicId) {
+            socket.join(`reception_clinic_${clinicId}`);
+            console.log(`🏥 Receptionist ${userId} joined room reception_clinic_${clinicId}`);
         }
     });
 
@@ -76,6 +82,7 @@ app.use('/api/ambulance', require('./routes/ambulance'));
 app.use('/api/telemedicine', require('./routes/telemedicine'));
 app.use('/api/clinics', require('./routes/clinics'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/reception', require('./routes/reception'));
 
 // Health check
 app.get('/api/health', (req, res) => {
