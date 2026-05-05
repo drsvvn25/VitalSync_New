@@ -828,19 +828,62 @@
         async function loadMyAppointments() {
             const res = await apiFetch('/appointments/list');
             const el = document.getElementById('my-appointments');
-            if (res?.ok && res.data.appointments.length > 0) {
-                el.innerHTML = res.data.appointments.map(a => `
-                    <div class="py-2 border-bottom">
-                        <div class="d-flex justify-content-between">
-                            <b>Dr. ${a.doctor_name}</b>
-                            <span class="badge bg-primary">${a.status}</span>
-                        </div>
-                        <div class="small text-muted">${new Date(a.appointment_date).toLocaleString()}</div>
-                    </div>`).join('');
-            } else {
-                el.innerHTML = '<div class="text-center p-3 small text-muted">No appointments</div>';
+            if (!res?.ok || !res.data.appointments || res.data.appointments.length === 0) {
+                el.innerHTML = '<div class="text-center p-3 small text-muted">No appointments yet</div>';
+                return;
             }
+
+            // Sort: pending → rejected → confirmed → completed
+            const ORDER = { pending: 0, rejected: 1, confirmed: 2, completed: 3 };
+            const sorted = [...res.data.appointments].sort((a, b) =>
+                (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9)
+            );
+
+            const BADGE = {
+                pending:   'bg-warning text-dark',
+                rejected:  'bg-danger',
+                confirmed: 'bg-success',
+                completed: 'bg-secondary',
+            };
+            const ICON = {
+                pending:   'fa-clock',
+                rejected:  'fa-times-circle',
+                confirmed: 'fa-check-circle',
+                completed: 'fa-flag-checkered',
+            };
+
+            el.innerHTML = sorted.map(a => `
+                <div class="py-2 border-bottom" id="appt-row-${a.id}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <b class="small">Dr. ${a.doctor_name}</b>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge ${BADGE[a.status] || 'bg-secondary'}" style="font-size:0.68rem;">
+                                <i class="fas ${ICON[a.status] || 'fa-circle'} me-1"></i>${a.status}
+                            </span>
+                            <button class="btn btn-outline-danger btn-sm p-0" 
+                                    style="width:22px;height:22px;font-size:0.6rem;line-height:1;"
+                                    title="Cancel appointment"
+                                    onclick="cancelMyAppointment(${a.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="small text-muted">${new Date(a.appointment_date).toLocaleString()}</div>
+                    ${a.queue_token ? `<div class="small text-muted" style="font-size:0.7rem;"><i class="fas fa-ticket-alt me-1 text-primary"></i>Token: <b>${a.queue_token}</b></div>` : ''}
+                </div>`).join('');
         }
+
+        window.cancelMyAppointment = async function(id) {
+            if (!confirm('Cancel this appointment?')) return;
+            const res = await apiFetch(`/appointments/cancel/${id}`, { method: 'DELETE' });
+            if (res?.ok) {
+                showToast('Appointment cancelled.', 'success');
+                const row = document.getElementById(`appt-row-${id}`);
+                if (row) row.remove();
+            } else {
+                showToast(res?.data?.message || 'Failed to cancel', 'error');
+            }
+        };
 
         loadDoctors();
         initMap();

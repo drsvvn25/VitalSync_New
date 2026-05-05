@@ -1,4 +1,5 @@
 const Patient = require('../models/Patient');
+// cancelAppointment — patient can cancel their OWN pending appointment
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
@@ -303,4 +304,23 @@ const deleteAppointment = async (req, res) => {
     }
 };
 
-module.exports = { bookAppointment, listAppointments, updateAppointment, getAppointmentStats, deleteAppointment };
+// DELETE /api/appointments/cancel/:id (patient only — own pending appointments)
+const cancelAppointment = async (req, res) => {
+    try {
+        const patient = await Patient.findOne({ user_id: req.user.id });
+        if (!patient)
+            return res.status(403).json({ success: false, message: 'Patient record not found.' });
+
+        const appt = await Appointment.findOne({ id: parseInt(req.params.id), patient_id: patient.patient_id });
+        if (!appt)
+            return res.status(403).json({ success: false, message: 'Appointment not found or unauthorized.' });
+
+        await Appointment.deleteOne({ id: parseInt(req.params.id) });
+        res.json({ success: true, message: 'Appointment cancelled successfully.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error.', error: err.message });
+    }
+};
+
+module.exports = { bookAppointment, listAppointments, updateAppointment, getAppointmentStats, deleteAppointment, cancelAppointment };
